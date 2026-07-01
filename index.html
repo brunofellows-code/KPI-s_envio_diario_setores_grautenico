@@ -103,6 +103,12 @@
   .lockbar .lb-btn{border:none;border-radius:10px;padding:9px 14px;font-weight:800;font-size:13px;cursor:pointer;background:#8f1414;color:#fff}
   .lockbar .lb-btn.alt{background:#13692f}
   .ro-note{background:#eef2f6;border:1px solid #d8e2ea;color:#4a5a68;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;margin-top:10px}
+  .jban{background:#fff4e5;border:1px solid #f0c98a;color:#7a4a00;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;line-height:1.4;margin-bottom:12px}
+  .warnbox{background:#fbf1f1;border:1px solid #e6c3c3;color:#7a3030;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600;line-height:1.4;margin-top:10px}
+  .htab{width:100%;border-collapse:collapse;font-size:12.5px}
+  .htab th,.htab td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--linha);white-space:nowrap}
+  .htab th:first-child,.htab td:first-child{text-align:left}
+  .htab thead th{color:var(--cinza);font-size:11px;text-transform:uppercase;letter-spacing:.02em}
   /* Toggle booleano (✓/✗) */
   .toggle{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--linha);border-radius:10px;padding:9px 12px;cursor:pointer;font-weight:700;font-size:13px;width:100%;background:#fff;color:#566;user-select:none}
   .toggle .box{width:20px;height:20px;border-radius:6px;border:2px solid #cdd6cf;display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:#fff;flex:none}
@@ -191,24 +197,52 @@ const DEFAULTS = [
    {key:"conv",    label:"Conversão GT (%)",         type:"pct",  nat:"deriv", g:2, meta:25, kind:"ratio_pct", src:"matgt", src2:"visitas"},
    {key:"mattot",  label:"Matrículas totais",        type:"num",  nat:"deriv", kind:"sum", srcs:["matgt","matgp"]},
    {key:"ritmogt", label:"Ritmo necessário GT",      type:"num",  nat:"deriv", kind:"ritmo", src:"matgt", meta:30},
+   {key:"cac",     label:"Perdidos por CAC (alunos)", type:"num",  nat:"estado", dir:"down", grupo:"Cascata de perda — motivo do Comercial"},
    {key:"vend",    label:"Destaque do dia (vendedor)",type:"text", nat:"alerta"}]},
 
  {id:"cra",name:"CRA",color:"#E67E22",fields:[
+   /* fluxo diário (entram na trava) */
    {key:"ligacoes",label:"Ligações de cobrança",     type:"num",  nat:"diario"},
-   {key:"acordos", label:"Acordos fechados",         type:"num",  nat:"diario"},
-   {key:"acvalor", label:"Valor em acordos (R$)",    type:"money",nat:"diario"},
-   {key:"recvalor",label:"Recebimento do mês (R$)",  type:"money",nat:"acum", meta:50000},
-   {key:"recup",   label:"Contas recuperadas (qtd)", type:"num",  nat:"acum"},
-   {key:"crqtd",   label:"Contas a receber (qtd)",   type:"num",  nat:"estado"},
-   {key:"crvalor", label:"Contas a receber (R$)",    type:"money",nat:"estado"},
-   {key:"venc1",   label:"Vencidos 1–30d (R$)",      type:"money",nat:"estado", dir:"down"},
-   {key:"venc2",   label:"Vencidos +30d (R$)",       type:"money",nat:"estado", dir:"down"},
-   {key:"pctreceb",label:"% recebido",               type:"pct",  nat:"deriv", g:1, meta:90, kind:"ratio_pct", src:"recvalor", src2:"crvalor"},
-   {key:"pctrecup",label:"% recuperação",            type:"pct",  nat:"deriv", g:2, meta:70, kind:"recup_pct", src:"recup", src2:"venc1", src3:"venc2"},
+   {key:"acordos", label:"Acordos NOVOS no dia",      type:"num",  nat:"diario"},
+   {key:"acvalor", label:"Valor dos acordos do dia (R$)",type:"money",nat:"diario"},
+   {key:"recvalor",label:"Recebido no dia (R$)",      type:"money",nat:"acum", meta:50000},
+   {key:"recup",   label:"Contas recuperadas (qtd, mês)",type:"num",nat:"acum"},
+   /* carteira congelada (foto do dia 1) — snapshot/estado */
+   {key:"cartParc",label:"Carteira do mês — parcelas",type:"num",  nat:"estado", grupo:"Carteira congelada (foto do dia 1)"},
+   {key:"cartVal", label:"Carteira do mês — valor (R$)",type:"money",nat:"estado", grupo:"Carteira congelada (foto do dia 1)"},
+   {key:"crProxParc",label:"A receber próximo mês — parcelas",type:"num",nat:"estado", grupo:"Carteira congelada (foto do dia 1)"},
+   {key:"crProxVal",label:"A receber próximo mês — valor (R$)",type:"money",nat:"estado", grupo:"Carteira congelada (foto do dia 1)"},
+   /* movimento da carteira (estado, atualiza no mês) */
+   {key:"acordoVal",label:"Carteira em acordo (R$)",  type:"money",nat:"estado", grupo:"Movimento da carteira (atualiza no mês)"},
+   {key:"perdaVal", label:"Perda da carteira (R$)",   type:"money",nat:"estado", dir:"down", grupo:"Movimento da carteira (atualiza no mês)"},
+   {key:"recParc",  label:"Parcelas recebidas (qtd)", type:"num",  nat:"estado", grupo:"Movimento da carteira (atualiza no mês)"},
+   /* Janela de Salvamento (2 parcelas, dia 1→8) */
+   {key:"p2Base",  label:"A 2 parcelas — início do mês (alunos)",type:"num",nat:"estado", dir:"down", grupo:"Janela de Salvamento (2 parcelas, dia 1→8)"},
+   {key:"p2Atual", label:"A 2 parcelas — saldo atual (alunos)",  type:"num",nat:"estado", dir:"down", grupo:"Janela de Salvamento (2 parcelas, dia 1→8)"},
+   {key:"p2Parc",  label:"A 2 parcelas — nº de parcelas",type:"num",nat:"estado", dir:"down", grupo:"Janela de Salvamento (2 parcelas, dia 1→8)"},
+   {key:"p2Val",   label:"A 2 parcelas — valor (R$)",  type:"money",nat:"estado", dir:"down", grupo:"Janela de Salvamento (2 parcelas, dia 1→8)"},
+   /* LFI consumada (3 parcelas) */
+   {key:"p3Alunos",label:"A 3 parcelas = LFI (alunos)",type:"num", nat:"estado", dir:"down", grupo:"Limpeza Financeira — LFI (3 parcelas)"},
+   {key:"p3Parc",  label:"A 3 parcelas — nº de parcelas",type:"num",nat:"estado", dir:"down", grupo:"Limpeza Financeira — LFI (3 parcelas)"},
+   {key:"p3Val",   label:"A 3 parcelas — valor (R$)",  type:"money",nat:"estado", dir:"down", grupo:"Limpeza Financeira — LFI (3 parcelas)"},
+   {key:"lfi",     label:"Perdidos por LFI (alunos) — entra na cascata",type:"num",nat:"estado", dir:"down", grupo:"Limpeza Financeira — LFI (3 parcelas)"},
+   /* MEDIDORES (★ e 2º) sobre carteira congelada */
+   {key:"pctreceb",label:"% recebido (carteira congelada)",type:"pct",nat:"deriv", g:1, meta:90, kind:"ratio_pct", src:"recvalor", src2:"cartVal"},
+   {key:"pctperda",label:"% perdido por evasão",      type:"pct",  nat:"deriv", g:2, meta:5, dir:"down", kind:"ratio_pct", src:"perdaVal", src2:"cartVal"},
+   /* derivados com card dedicado (dim:true => fora do card genérico) */
+   {key:"inadAtivoVal",label:"Inadimplente ativo (R$)",type:"money",nat:"deriv", dir:"down", dim:true, kind:"minus", src:"cartVal", srcs:["recvalor","acordoVal","perdaVal"]},
+   {key:"pctAparente",label:"Inadimplência aparente (%)",type:"pct",nat:"deriv", dir:"down", dim:true, kind:"aparente", src:"recvalor", src2:"cartVal", src3:"perdaVal"},
+   {key:"ilusao",  label:"Ilusão do cancelamento (pp)",type:"num", nat:"deriv", dir:"down", dim:true, kind:"diff", src:"pctAparente", src2:"pctreceb"},
+   {key:"pctrecup",label:"% recuperação na Janela",   type:"pct",  nat:"deriv", dim:true, kind:"jrecup", src:"p2Base", src2:"p2Atual"},
+   {key:"pctParcReceb",label:"% parcelas recebidas",  type:"pct",  nat:"deriv", dim:true, kind:"ratio_pct", src:"recParc", src2:"cartParc"},
+   {key:"ticketParc",label:"Ticket por parcela (R$)", type:"money",nat:"deriv", dim:true, kind:"ratio", src:"cartVal", src2:"cartParc"},
+   {key:"ticketAt0",label:"Ticket por aluno ativo (R$)",type:"money",nat:"deriv", dim:true, kind:"ratioU", src:"cartVal", srcU:"atInicio"},
+   {key:"parcPorAluno",label:"% parcelas sobre ativos",type:"pct", nat:"deriv", dim:true, kind:"ratioU_pct", src:"cartParc", srcU:"atInicio"},
+   /* derivados de fluxo de acordos (card genérico) */
    {key:"ticket",  label:"Ticket médio do acordo (R$)",type:"money",nat:"deriv", kind:"ratio", src:"recvalor", src2:"acordos"},
-   {key:"convac",  label:"Conversão de acordos (%)", type:"pct",  nat:"deriv", kind:"ratio_pct", src:"acordos", src2:"ligacoes"},
-   {key:"medac",   label:"Média de acordos/dia útil",type:"num",  nat:"deriv", kind:"mediadia", src:"acordos"},
-   {key:"critico", label:"Aluno crítico p/ gestor",  type:"text", nat:"alerta"}]},
+   {key:"convac",  label:"Conversão de acordos (%)",  type:"pct",  nat:"deriv", kind:"ratio_pct", src:"acordos", src2:"ligacoes"},
+   {key:"medac",   label:"Média de acordos/dia útil", type:"num",  nat:"deriv", kind:"mediadia", src:"acordos"},
+   {key:"critico", label:"Aluno crítico p/ gestor",   type:"text", nat:"alerta"}]},
 
  {id:"pedagogico",name:"Pedagógico",color:"#4f9e34",fields:[
    {key:"faltosos",label:"Faltosos (hoje)",          type:"num",  nat:"diario", dir:"down"},
@@ -228,6 +262,9 @@ const DEFAULTS = [
    {key:"ttarde",  label:"Turmas — tarde",           type:"num",  nat:"estado", sub:"tarde"},
    {key:"instrut", label:"Instrutores ativos",       type:"num",  nat:"estado"},
    {key:"horas",   label:"Horas/aluno (mês)",        type:"num",  nat:"mensal"},
+   {key:"lfr",     label:"Perdidos por LFR (alunos)",type:"num",  nat:"estado", dir:"down", grupo:"Cascata de perda — motivos do Pedagógico (ACAWEB)"},
+   {key:"can",     label:"Perdidos por CAN (alunos)",type:"num",  nat:"estado", dir:"down", grupo:"Cascata de perda — motivos do Pedagógico (ACAWEB)"},
+   {key:"lac",     label:"Perdidos por LAC — Limpeza Acadêmica (alunos)",type:"num",nat:"estado", dir:"down", grupo:"Cascata de perda — motivos do Pedagógico (ACAWEB)"},
    {key:"evasaopct",label:"% evasão",                type:"pct",  nat:"deriv", g:1, meta:5, dir:"down", kind:"evasao_pct", srcs:["evnoite","evmanha","evtarde"], src2:"ativos"},
    {key:"presenca",label:"Presença GT (%)",          type:"pct",  nat:"deriv", g:2, meta:85, kind:"presenca", src:"pctfalt"},
    {key:"pctfalt", label:"% faltosos (média/dia)",   type:"pct",  nat:"deriv", dir:"down", kind:"pctfalt", src:"faltosos", src2:"ativos"},
@@ -243,6 +280,7 @@ const DEFAULTS = [
    {key:"cancel",  label:"Cancelamentos",            type:"num",  nat:"diario", dir:"down"},
    {key:"revers",  label:"Reversões",                type:"num",  nat:"diario"},
    {key:"nc",      label:"NCs registradas",          type:"num",  nat:"diario", dir:"down"},
+   {key:"ncomp",   label:"Nunca Compareceu (alunos) — entra na cascata",type:"num",nat:"estado", dir:"down", grupo:"Cascata de perda — motivo da Qualidade"},
    {key:"posv",    label:"Pós-venda contatados",     type:"num",  nat:"acum", g:1, meta:200},
    {key:"taxarev", label:"Taxa de reversão (%)",     type:"pct",  nat:"deriv", g:2, meta:60, kind:"ratio_pct", src:"revers", src2:"cancel"},
    {key:"cancliq", label:"Cancelamentos líquidos",   type:"num",  nat:"deriv", dir:"down", kind:"diff", src:"cancel", src2:"revers"},
@@ -280,7 +318,7 @@ const FECH_KINDS = ["checkpct","sum_today","indfech"]; // derivados de fechament
 let S = { tab:"comercial", date:isoToday(), data:emptyData(), cloud:"init" };
 let db=null, docRef=null, saveTimer=null, applyingRemote=false;
 
-function emptyData(){ return {conf:{},entries:{},estado:{},lock:{},cfg:{thresholds:{warn:1,bad:2,hard:3},gestorPin:"",feriados:[]}}; }
+function emptyData(){ return {conf:{},entries:{},estado:{},lock:{},unidade:{},historico:{},cfg:{thresholds:{warn:1,bad:2,hard:3},gestorPin:"",feriados:[],diaVenc:8}}; }
 
 /* ---- datas ---- */
 function isoToday(){ const d=new Date(); return isoOf(d); }
@@ -296,18 +334,36 @@ function entriesOf(id){ return S.data.entries[id] || (S.data.entries[id]={}); }
 function estadoOf(id){ return S.data.estado[id] || (S.data.estado[id]={}); }
 function fieldOf(id,key){ return confOf(id).find(f=>f.key===key); }
 function lbl(id,key){ const f=fieldOf(id,key); return f?f.label:key; }
+const ULBL={atInicio:"alunos ativos no início do mês",atConcluidos:"alunos que concluíram no mês"};
+function uLbl(key){ return ULBL[key]||key; }
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function num(v){ const n=Number(v); return isNaN(n)?0:n; }
+
+/* Estrutura dos indicadores é do CÓDIGO (DEFAULTS). De dados salvos/nuvem herdamos SÓ a meta editada — nunca a estrutura,
+   senão um schema antigo (na nuvem) ressuscitaria campos removidos (venc1/venc2/crvalor) e fórmulas velhas. */
+function reconcileConf(stored){
+  const out={};
+  DEFAULTS.forEach(s=>{
+    const base=clone(s.fields);
+    const arr=(stored&&stored[s.id]&&Array.isArray(stored[s.id]))?stored[s.id]:null;
+    if(arr){ const byKey={}; arr.forEach(f=>{ if(f&&f.key) byKey[f.key]=f; });
+      base.forEach(f=>{ const sf=byKey[f.key]; if(sf&&sf.meta!=null&&isFinite(Number(sf.meta))) f.meta=Number(sf.meta); }); }
+    out[s.id]=base;
+  });
+  return out;
+}
 
 /* ====================== PERSIST (offline-first + debounce 800ms) ====================== */
 function bootData(){
   let d=emptyData();
   try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const p=JSON.parse(raw); d=Object.assign(emptyData(),p); } }catch(e){}
   if(!d.conf)d.conf={}; if(!d.entries)d.entries={}; if(!d.estado)d.estado={}; if(!d.lock)d.lock={};
+  if(!d.unidade||typeof d.unidade!=="object")d.unidade={}; if(!d.historico||typeof d.historico!=="object")d.historico={};
   if(!d.cfg)d.cfg={}; if(!d.cfg.thresholds)d.cfg.thresholds={warn:1,bad:2,hard:3};
   if(d.cfg.gestorPin==null)d.cfg.gestorPin=""; if(!Array.isArray(d.cfg.feriados))d.cfg.feriados=[];
+  if(d.cfg.diaVenc==null) d.cfg.diaVenc=8;
   if(!d.cfg.inicio) d.cfg.inicio=isoOf(new Date()); // piso da trava = 1º uso; não cobra dias úteis anteriores à instalação
-  DEFAULTS.forEach(s=>{ if(!d.conf[s.id]) d.conf[s.id]=clone(s.fields); });
+  d.conf = reconcileConf(d.conf); // estrutura/medidores vêm do código; só a meta editada é preservada
   S.data=d;
 }
 function save(){
@@ -335,12 +391,13 @@ function initCloud(tries){
     docRef.onSnapshot(snap=>{
       if(!snap.exists) return;
       const r=snap.data()||{}; applyingRemote=true;
-      S.data.conf   = Object.assign(S.data.conf,   r.conf||{});
       S.data.entries= Object.assign(S.data.entries,r.entries||{});
       S.data.estado = Object.assign(S.data.estado, r.estado||{});
       S.data.lock   = Object.assign(S.data.lock,   r.lock||{});
+      if(r.unidade)  S.data.unidade  = Object.assign(S.data.unidade||{},  r.unidade);
+      if(r.historico)S.data.historico= Object.assign(S.data.historico||{},r.historico);
       if(r.cfg) S.data.cfg = Object.assign(S.data.cfg, r.cfg);
-      DEFAULTS.forEach(s=>{ if(!S.data.conf[s.id]) S.data.conf[s.id]=clone(s.fields); });
+      S.data.conf = reconcileConf(r.conf||S.data.conf); // estrutura do código; herda só a meta da nuvem
       try{ localStorage.setItem(LS_KEY,JSON.stringify(S.data)); }catch(e){}
       applyingRemote=false; render();
     }, err=>{ console.warn("onSnapshot:",err&&err.code); setCloud(err&&err.code==="permission-denied"?"denied":"off"); });
@@ -381,6 +438,7 @@ function resolveKey(id,key,forDate,depth){
   if(f.nat==="deriv") return computeDeriv(id,f,forDate,depth+1);
   return rawVal(id,f,forDate);
 }
+function unidadeNum(key){ const v=(S.data.unidade||{})[key]; return (v==null||v==="")?0:num(v); }
 function computeDeriv(id,f,forDate,depth){
   const R=(k)=>resolveKey(id,k,forDate,depth);
   switch(f.kind){
@@ -397,6 +455,11 @@ function computeDeriv(id,f,forDate,depth){
     case "checkpct":{ const ks=f.srcs||[]; const t=ks.reduce((s,k)=>s+(dayVal(id,k,forDate)?1:0),0); return ks.length?t/ks.length*100:0; }
     case "indfech":{ const ks=f.srcs||[]; const t=ks.reduce((s,k)=>s+(dayVal(id,k,forDate)?1:0),0); return ks.length?t/ks.length*100:0; }
     case "sum_today":{ return (f.srcs||[]).reduce((s,k)=>s+dayVal(id,k,forDate),0); }
+    case "minus":{ const base=R(f.src); const sub=(f.srcs||[]).reduce((s,k)=>s+R(k),0); return base-sub; }
+    case "aparente":{ const a=R(f.src); const den=R(f.src2)-R(f.src3); return den>0?a/den*100:0; }
+    case "jrecup":{ const b=R(f.src); return b>0?(b-R(f.src2))/b*100:0; }
+    case "ratioU":{ const b=unidadeNum(f.srcU); return b>0?R(f.src)/b:0; }
+    case "ratioU_pct":{ const b=unidadeNum(f.srcU); return b>0?R(f.src)/b*100:0; }
     default: return 0;
   }
 }
@@ -497,6 +560,11 @@ function iDeriv(id,f,forDate){
     case "checkpct":{ const ks=f.srcs||[]; const t=ks.reduce((s,k)=>s+(dayVal(id,k,forDate)?1:0),0); body=`itens marcados ÷ total × 100 (do dia)<span class="f">${t} ÷ ${ks.length} × 100 = ${fmt(v)}%</span>`; break; }
     case "indfech":{ const ks=f.srcs||[]; const t=ks.reduce((s,k)=>s+(dayVal(id,k,forDate)?1:0),0); body=`(4 livros + 4 conciliações + DRE) conferidos ÷ 9 × 100<span class="f">${t} ÷ 9 × 100 = ${fmt(v)}%</span>`; break; }
     case "sum_today":{ const nums=(f.srcs||[]).map(k=>fmt(dayVal(id,k,forDate))).join(" + "); body=`soma dos saldos do dia<span class="f">${nums} = ${fmtT(v,'money')}</span>`; break; }
+    case "minus":{ const base=resolveKey(id,f.src,forDate); const parts=(f.srcs||[]).map(k=>lbl(id,k)).join(" + "); const nums=(f.srcs||[]).map(k=>fmtT(resolveKey(id,k,forDate),'money')).join(" + "); body=`${lbl(id,f.src)} − (${parts})<span class="f">${fmtT(base,'money')} − (${nums}) = ${fmtT(v,'money')}</span>${v<0?'<span class="f" style="color:var(--bad)">⚠ negativo: os valores informados excedem a carteira — revise recebido/acordo/perda</span>':''}`; break; }
+    case "aparente":{ const a=resolveKey(id,f.src,forDate),b=resolveKey(id,f.src2,forDate),c=resolveKey(id,f.src3,forDate); body=`${lbl(id,f.src)} ÷ (${lbl(id,f.src2)} − ${lbl(id,f.src3)}) × 100<span class="f">${fmtT(a,'money')} ÷ (${fmtT(b,'money')} − ${fmtT(c,'money')}) × 100 = ${fmt(v)}%</span><span class="f">denominador exclui a perda já consumada → infla o % recebido (a "ilusão")</span>`; break; }
+    case "jrecup":{ const b=resolveKey(id,f.src,forDate),at=resolveKey(id,f.src2,forDate); body=`(${lbl(id,f.src)} − ${lbl(id,f.src2)}) ÷ ${lbl(id,f.src)} × 100<span class="f">(${fmt(b)} − ${fmt(at)}) ÷ ${fmt(b)} × 100 = ${fmt(v)}%</span><span class="f">quantos da Janela já saíram do risco de 2 parcelas</span>`; break; }
+    case "ratioU":{ const a=resolveKey(id,f.src,forDate),b=unidadeNum(f.srcU); body=`${lbl(id,f.src)} ÷ ${uLbl(f.srcU)}<span class="f">${fmtT(a,'money')} ÷ ${fmt(b)} = ${fmtT(v,'money')}</span>${b<=0?'<span class="f">informe '+uLbl(f.srcU)+' na aba Unidade</span>':''}`; break; }
+    case "ratioU_pct":{ const a=resolveKey(id,f.src,forDate),b=unidadeNum(f.srcU); body=`${lbl(id,f.src)} ÷ ${uLbl(f.srcU)} × 100<span class="f">${fmt(a)} ÷ ${fmt(b)} × 100 = ${fmt(v)}%</span>${b<=0?'<span class="f">informe '+uLbl(f.srcU)+' na aba Unidade</span>':''}`; break; }
     default: body=`Valor atual: ${fmt(v)}`;
   }
   return head+"<br>"+body;
@@ -564,13 +632,96 @@ function lockBanner(id){
 function brISO(iso){ const p=(iso||"").split("-"); return p.length===3?`${p[2]}/${p[1]}`:iso; }
 
 /* ---------- SECTOR VIEW ---------- */
+/* ---------- CRA: helpers de carteira, cascata e janela ---------- */
+function estNum(secId,key){ const v=estadoOf(secId)[key]; return (v==null||v==="")?0:num(v); }
+function dueDay(){ return Math.min(28,Math.max(1,num(S.data.cfg.diaVenc)||8)); }
+function nextDueDate(){ const t=new Date(); t.setHours(0,0,0,0); const dd=dueDay(); let y=t.getFullYear(),m=t.getMonth(); if(t.getDate()>dd){ m++; if(m>11){m=0;y++;} } return new Date(y,m,dd); }
+function bizUntil(target){ let d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+1); const tt=new Date(target); tt.setHours(0,0,0,0); let n=0,g=0; while(d<=tt && g<400){ if(isBiz(d))n++; d.setDate(d.getDate()+1); g++; } return n; }
+const CASCATA=[
+  {k:"cac", sec:"comercial", lab:"CAC (Comercial)"},
+  {k:"lfr", sec:"pedagogico",lab:"LFR (Pedagógico)"},
+  {k:"can", sec:"pedagogico",lab:"CAN (Pedagógico)"},
+  {k:"lac", sec:"pedagogico",lab:"LAC (Pedagógico)"},
+  {k:"lfi", sec:"cra",       lab:"LFI (CRA)"},
+  {k:"ncomp",sec:"qualidade",lab:"Nunca Compareceu (Qualidade)"}
+];
+function cascataData(){ const rows=CASCATA.map(m=>({...m,n:estNum(m.sec,m.k)})); const total=rows.reduce((s,r)=>s+r.n,0); return {rows,total}; }
+function janelaBanner(){
+  const dd=dueDay(); const hoje=new Date().getDate(); const p2a=estNum("cra","p2Atual"); const p2v=estNum("cra","p2Val");
+  if(!(hoje<=dd && p2a>0)) return "";
+  const y=bizUntil(nextDueDate());
+  return `<div class="jban">⏳ <b>${fmt(p2a)} aluno(s)</b> a 2 parcelas (${fmtT(p2v,'money')}) viram <b>LFI</b> em <b>${y} dia(s) útil(eis)</b> — agir agora é tarefa de TODO o time (Comercial, Pedagógico, Qualidade e CRA).</div>`;
+}
+function craBlocks(id,sec,fd){
+  const cartVal=resolveKey(id,"cartVal",fd), rec=resolveKey(id,"recvalor",fd), aco=resolveKey(id,"acordoVal",fd), per=resolveKey(id,"perdaVal",fd);
+  const inad=resolveKey(id,"inadAtivoVal",fd);
+  const ap=resolveKey(id,"pctAparente",fd), il=resolveKey(id,"ilusao",fd), rl=resolveKey(id,"pctreceb",fd);
+  // CARD 1 — carteira congelada (identidade)
+  const comp=[
+    {lab:"Recebido", val:rec, disp:fmtT(rec,'money')},
+    {lab:"Em acordo",val:aco, disp:fmtT(aco,'money')},
+    {lab:"Perda",    val:per, disp:fmtT(per,'money')},
+    {lab:"Inad. ativo",val:Math.max(0,inad), disp:fmtT(inad,'money')}
+  ];
+  const idI=`<b>Identidade da carteira</b><br>Carteira = Recebido + Em acordo + Perda + Inadimplente ativo<span class="f">${fmtT(rec,'money')} + ${fmtT(aco,'money')} + ${fmtT(per,'money')} + ${fmtT(inad,'money')} = ${fmtT(rec+aco+per+inad,'money')}</span><span class="f">Carteira congelada (foto): ${fmtT(cartVal,'money')} — fecha por construção (Inad. ativo = Carteira − Recebido − Em acordo − Perda)</span>${inad<0?'<span class="f" style="color:var(--bad)">⚠ Inadimplente ativo negativo: Recebido + Em acordo + Perda excedem a carteira. Revise os lançamentos.</span>':''}`;
+  const tk=[
+    scoreCard(fmt(ap)+"%","Inad. aparente",iBtn(iDeriv(id,fieldOf(id,"pctAparente"),fd))),
+    scoreCard(fmt(rl)+"%","% recebido real (★)",iBtn(iGauge(id,fieldOf(id,"pctreceb")))),
+    scoreCard(fmt(il)+" pp","Ilusão do cancelamento",iBtn(iDeriv(id,fieldOf(id,"ilusao"),fd))),
+    scoreCard(fmtT(resolveKey(id,"ticketParc",fd),'money'),"Ticket por parcela",iBtn(iDeriv(id,fieldOf(id,"ticketParc"),fd))),
+    scoreCard(fmtT(resolveKey(id,"ticketAt0",fd),'money'),"Ticket por aluno ativo",iBtn(iDeriv(id,fieldOf(id,"ticketAt0"),fd))),
+    scoreCard(fmt(resolveKey(id,"parcPorAluno",fd))+"%","Parcelas sobre ativos",iBtn(iDeriv(id,fieldOf(id,"parcPorAluno"),fd))),
+    scoreCard(fmt(resolveKey(id,"pctParcReceb",fd))+"%","% parcelas recebidas",iBtn(iDeriv(id,fieldOf(id,"pctParcReceb"),fd)))
+  ].join("");
+  const card1=`<div class="card" style="border-top:4px solid ${sec.color}">
+    <h2>🧊 Carteira congelada do mês ${iBtn(idI)}</h2>
+    <p class="muted">A carteira é a foto do dia 1 e não muda no mês. Tudo o que acontece é o dinheiro migrando entre estes 4 baldes.</p>
+    ${compareBars(comp,sec.color)}
+    <div class="warnbox">A <b>inadimplência aparente</b> (${fmt(ap)}%) parece melhor que o <b>% recebido real</b> (${fmt(rl)}%) porque ela ignora a perda já consumada. A diferença — <b>${fmt(il)} pontos</b> — é a “ilusão do cancelamento”. Toque nos “i”.</div>
+    <div class="grid-cards" style="margin-top:12px">${tk}</div>
+  </div>`;
+  // CARD 2 — cascata de motivos
+  const cd=cascataData();
+  const bars=cd.rows.map(r=>({lab:r.lab.split(" (")[0], val:r.n, disp:fmt(r.n)}));
+  const cI=`<b>Total de perdidos no mês</b><br>PERDIDOS = CAC + LFR + CAN + LAC + LFI + NuncaCompareceu<span class="f">${cd.rows.map(r=>fmt(r.n)).join(" + ")} = ${fmt(cd.total)} aluno(s)</span><span class="f">cada motivo é lançado pelo setor dono: Comercial, Pedagógico, CRA e Qualidade</span>`;
+  const estCards = cd.total>0 ? cd.rows.map(r=>{ const val=per*r.n/cd.total; return scoreCard(fmtT(val,'money'),r.lab+" <span class='badge'>estimado</span>"); }).join("") : "";
+  const card2=`<div class="card">
+    <h2>🪜 Cascata de perda — por motivo ${iBtn(cI)}</h2>
+    <p class="muted">De onde vêm os alunos perdidos. O número é a contagem real de cada setor. O valor em R$ é um rateio proporcional da perda da carteira — <b>estimativa</b>, não medição.</p>
+    ${cd.total>0?compareBars(bars,"#c0392b"):'<div class="empty">Sem perdas lançadas no mês.</div>'}
+    <div class="warnbox" style="margin-top:10px">Total perdido: <b>${fmt(cd.total)} aluno(s)</b> · Perda da carteira: <b>${fmtT(per,'money')}</b>${cd.total>0?` · estimativa por motivo abaixo (perda ÷ total × nº do motivo)`:""}</div>
+    ${estCards?`<div class="grid-cards" style="margin-top:12px">${estCards}</div>`:""}
+  </div>`;
+  // CARD 3 — relógio do dia DD + janela
+  const dd=dueDay(); const hoje=new Date().getDate(); const p2b=estNum("cra","p2Base"), p2a=estNum("cra","p2Atual"), p2v=estNum("cra","p2Val");
+  const recup=resolveKey(id,"pctrecup",fd);
+  const dentro = hoje<=dd;
+  const y=bizUntil(nextDueDate());
+  const relogio = dentro
+    ? `<div class="warnbox">Faltam <b>${y} dia(s) útil(eis)</b> até o dia <b>${dd}</b>. Quem está a 2 parcelas e não regularizar até lá vira <b>LFI (3 parcelas)</b> — perda consumada.</div>`
+    : `<div class="ro-note">Janela do mês encerrada (passou do dia ${dd}). A próxima foto da Janela é no dia ${dd} do próximo mês.</div>`;
+  const rc=[
+    scoreCard(fmt(p2b),"A 2 parcelas — início"),
+    scoreCard(fmt(p2a),"A 2 parcelas — agora"),
+    scoreCard(fmtT(p2v,'money'),"Valor em risco"),
+    scoreCard(fmt(recup)+"%","% recuperação na Janela",iBtn(iDeriv(id,fieldOf(id,"pctrecup"),fd)))
+  ].join("");
+  const card3=`<div class="card">
+    <h2>⏱️ Relógio do dia ${dd} — Janela de Salvamento</h2>
+    <p class="muted">2 parcelas é o último ponto de recuperação barata. Depois do dia ${dd}, vira limpeza financeira.</p>
+    ${relogio}
+    <div class="grid-cards" style="margin-top:12px">${rc}</div>
+  </div>`;
+  return card1+card2+card3;
+}
+
 function sectorView(id){
   const sec=sector(id), conf=confOf(id); const today=isoToday();
   const st=lockStatus(id); const editable=canEdit(id,S.date);
   const fdFech = S.date; // derivados de fechamento mostram o dia editado
 
   const gauges = conf.filter(f=>f.g).sort((a,b)=>a.g-b.g).slice(0,2);
-  const derivsNG = conf.filter(f=>f.nat==="deriv" && !f.g);
+  const derivsNG = conf.filter(f=>f.nat==="deriv" && !f.g && !f.dim);
   const submetas = conf.filter(f=>["diario","acum"].includes(f.nat) && !f.g && f.type!=="text" && f.type!=="bool" && !f.snap && !f.sub);
   const alerts = conf.filter(f=>f.nat==="alerta");
 
@@ -627,6 +778,7 @@ function sectorView(id){
   let cfgHTML = configRows(id);
 
   return `
+  ${janelaBanner()}
   ${lockBanner(id)}
   <div class="card">
     <div class="row" style="justify-content:space-between;align-items:flex-end">
@@ -641,6 +793,8 @@ function sectorView(id){
     <p class="muted">As 2 metas-chave. ★ alimenta o termômetro da Unidade. Verde na meta · amarelo perto · vermelho abaixo.</p>
     <div class="mae-grid" style="margin-top:12px">${gHTML||'<div class="empty">Defina os medidores na configuração.</div>'}</div>
   </div>
+
+  ${id==="cra"?craBlocks(id,sec,fdFech):""}
 
   ${dHTML?`<div class="card"><h2>🧮 Métricas derivadas <span class="badge">cálculo automático</span></h2><p class="muted">Calculadas a partir do que já é lançado — sem digitar nada novo. Toque no “i” para ver a conta.</p><div class="grid-cards" style="margin-top:12px">${dHTML}</div></div>`:""}
 
@@ -746,14 +900,21 @@ function groupedInputs(id, fields, editable){
 /* ---------- inputs de estado/mensal/semanal ---------- */
 function estadoInputs(id,nats){
   const conf=confOf(id).filter(f=>nats.includes(f.nat)); if(!conf.length) return '<div class="empty">Nada a cadastrar.</div>';
-  const est=estadoOf(id); let html='<div class="grid2" style="margin-top:6px">';
-  conf.forEach(f=>{
+  const est=estadoOf(id);
+  const inp=(f)=>{
     const v=est[f.key];
     const flag=f.flag?` <span class="badge" title="${f.flag}">⚑ fonte</span>`:"";
-    if(f.type==="bool"){ const on=v===true; html+=`<div><div class="toggle ${on?'on':'off'}" onclick="toggleEstado('${id}','${f.key}')"><span class="box">${on?'✓':''}</span><span>${f.label}${flag}</span></div></div>`; }
-    else{ const unit=f.type==="money"?"R$":f.type==="pct"?"%":""; html+=`<div><label class="fl">${f.label} ${unit?`<span style="color:#9aa7a0">(${unit})</span>`:""}${flag}</label><input type="${f.type==="text"?"text":"number"}" step="any" value="${v==null?"":String(v).replace(/"/g,'&quot;')}" onchange="onEstado('${id}','${f.key}',this.value)" placeholder="${f.type==="text"?"":"0"}"></div>`; }
-  });
-  return html+'</div>';
+    if(f.type==="bool"){ const on=v===true; return `<div><div class="toggle ${on?'on':'off'}" onclick="toggleEstado('${id}','${f.key}')"><span class="box">${on?'✓':''}</span><span>${f.label}${flag}</span></div></div>`; }
+    const unit=f.type==="money"?"R$":f.type==="pct"?"%":""; return `<div><label class="fl">${f.label} ${unit?`<span style="color:#9aa7a0">(${unit})</span>`:""}${flag}</label><input type="${f.type==="text"?"text":"number"}" step="any" value="${v==null?"":String(v).replace(/"/g,'&quot;')}" onchange="onEstado('${id}','${f.key}',this.value)" placeholder="${f.type==="text"?"":"0"}"></div>`;
+  };
+  if(conf.some(f=>f.grupo)){
+    const groups={}, order=[];
+    conf.forEach(f=>{ const g=f.grupo||"Outros cadastros"; if(!groups[g]){groups[g]=[];order.push(g);} groups[g].push(f); });
+    let html="";
+    order.forEach(g=>{ html+=`<div class="grid2" style="margin-top:6px"><div class="ghead">${g}</div>${groups[g].map(inp).join("")}</div>`; });
+    return html;
+  }
+  return '<div class="grid2" style="margin-top:6px">'+conf.map(inp).join("")+'</div>';
 }
 
 /* ---------- config enxuta ---------- */
@@ -775,6 +936,43 @@ function configRows(id){
 }
 
 /* ---------- UNIT VIEW ---------- */
+function ymNow(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+function ymLabel(ym){ const p=(ym||"").split("-"); const ms=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"]; return p.length===2?`${ms[(+p[1])-1]||p[1]}/${p[0]}`:ym; }
+function snapshotMonth(){
+  const ym=ymNow(), t=isoToday();
+  S.data.historico[ym]={
+    atInicio:unidadeNum("atInicio"), atConcluidos:unidadeNum("atConcluidos"),
+    cartVal:resolveKey("cra","cartVal",t), recvalor:resolveKey("cra","recvalor",t),
+    perdaVal:resolveKey("cra","perdaVal",t), pctreceb:resolveKey("cra","pctreceb",t),
+    pctperda:resolveKey("cra","pctperda",t), ts:Date.now()
+  };
+  save(); render();
+}
+function unitInputsCard(){
+  const ai=unidadeNum("atInicio"), ac=unidadeNum("atConcluidos");
+  const iH=`<b>Dados da central</b><br>Base de alunos ativos da unidade no mês. Alimenta os tickets por aluno do CRA (Ticket por aluno ativo e Parcelas sobre ativos).<span class="f">início: ${fmt(ai)} · concluíram: ${fmt(ac)}</span>`;
+  return `<div class="card"><h2>🏢 Dados da central (mês) ${iBtn(iH)}</h2>
+    <p class="muted">Número de alunos ativos da unidade. Sem isto, os tickets por aluno do CRA aparecem como “–”.</p>
+    <div class="grid2" style="margin-top:6px">
+      <div><label class="fl">${uLbl("atInicio")}</label><input type="number" step="any" value="${(S.data.unidade.atInicio==null||S.data.unidade.atInicio==="")?"":S.data.unidade.atInicio}" onchange="onUnidade('atInicio',this.value)" placeholder="0"></div>
+      <div><label class="fl">${uLbl("atConcluidos")}</label><input type="number" step="any" value="${(S.data.unidade.atConcluidos==null||S.data.unidade.atConcluidos==="")?"":S.data.unidade.atConcluidos}" onchange="onUnidade('atConcluidos',this.value)" placeholder="0"></div>
+    </div></div>`;
+}
+function historyTable(){
+  const h=S.data.historico||{}; const yms=Object.keys(h).sort().reverse();
+  const iH=`<b>Histórico mensal</b><br>Foto manual dos números-chave do CRA no momento em que você toca “Fotografar mês”. Serve para comparar meses — não recalcula sozinho.<span class="f">guarda: ativos início/concluídos, carteira, recebido, perda, % recebido e % perdido</span>`;
+  let rows="";
+  if(!yms.length){ rows=`<div class="empty">Nenhuma foto ainda. Toque em “Fotografar mês” para guardar os números atuais.</div>`; }
+  else{
+    rows=`<div style="overflow-x:auto"><table class="htab"><thead><tr><th>Mês</th><th>Ativos início</th><th>Concluíram</th><th>Carteira</th><th>Recebido</th><th>Perda</th><th>% receb.</th><th>% perda</th></tr></thead><tbody>`;
+    yms.forEach(ym=>{ const r=h[ym]; rows+=`<tr><td><b>${ymLabel(ym)}</b></td><td>${fmt(r.atInicio)}</td><td>${fmt(r.atConcluidos)}</td><td>${fmtT(r.cartVal,'money')}</td><td>${fmtT(r.recvalor,'money')}</td><td>${fmtT(r.perdaVal,'money')}</td><td>${fmt(r.pctreceb)}%</td><td>${fmt(r.pctperda)}%</td></tr>`; });
+    rows+=`</tbody></table></div>`;
+  }
+  return `<div class="card"><h2>🗓️ Histórico mensal ${iBtn(iH)}</h2>
+    <p class="muted">Comparativo mês a mês dos números do CRA. A foto de <b>${ymLabel(ymNow())}</b> sobrescreve se você fotografar de novo no mesmo mês.</p>
+    <button class="btn-ghost" onclick="snapshotMonth()">📸 Fotografar mês (${ymLabel(ymNow())})</button>
+    <div style="margin-top:12px">${rows}</div></div>`;
+}
 function unitView(){
   const rows=DEFAULTS.map(s=>({s, star:sectorStar(s.id), health:sectorHealth(s.id)}));
   const overall=Math.round(rows.reduce((a,b)=>a+b.star,0)/rows.length);
@@ -814,6 +1012,7 @@ function unitView(){
   });
 
   return `
+  ${janelaBanner()}
   <div class="card" style="text-align:center;border-top:4px solid #0d4420">
     <h2 style="justify-content:center">🌡️ Termômetro da Unidade ${iBtn("<b>Índice da unidade</b><br>Média da projeção do indicador ★ de cada setor (não o % de hoje).<span class=\"f\">unidade = média( score ★ projetado de cada setor )\nverde ≥100% · amarelo 80–99% · vermelho <80%</span>")}</h2>
     ${gaugeSVG(Math.min(100,overall),ocol)}
@@ -832,6 +1031,10 @@ function unitView(){
 
   <div class="card"><h2>📋 Visão por setor</h2><p class="muted">Toque num card para abrir o setor.</p><div class="grid-cards" style="margin-top:12px">${cardsHTML}</div></div>
 
+  ${unitInputsCard()}
+
+  ${historyTable()}
+
   <div class="card" style="border-top:4px solid #8f1414">
     <h2>🔒 Configuração da trava (gestor)</h2>
     <p class="muted">Limiares de atraso (em dias úteis), feriados e PIN. Vale como ajuste local nesta versão.</p>
@@ -841,6 +1044,7 @@ function unitView(){
       <div><label class="fl">Trava dura a partir de</label><input type="number" min="1" step="1" value="${S.data.cfg.thresholds.hard}" onchange="setThreshold('hard',this.value)"></div>
     </div>
     <div style="margin-top:10px"><label class="fl">Início da contagem da trava (a partir desta data)</label><input type="date" value="${S.data.cfg.inicio||""}" onchange="setInicio(this.value)"></div>
+    <div style="margin-top:10px"><label class="fl">Dia do vencimento / corte da Janela (1–28)</label><input type="number" min="1" max="28" step="1" value="${dueDay()}" onchange="setDiaVenc(this.value)"></div>
     <div style="margin-top:10px"><label class="fl">Feriados (datas AAAA-MM-DD separadas por vírgula)</label><input type="text" value="${(S.data.cfg.feriados||[]).join(', ')}" onchange="setFeriados(this.value)" placeholder="2026-09-07, 2026-10-12"></div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn-ghost" onclick="setPin()">${S.data.cfg.gestorPin?"Alterar PIN do gestor":"Definir PIN do gestor"}</button>
@@ -871,6 +1075,8 @@ function releaseLock(id){
 function setThreshold(which,val){ const n=Math.max(1,Math.round(num(val))); S.data.cfg.thresholds[which]=n; save(); render(); }
 function setFeriados(val){ const arr=String(val).split(",").map(s=>s.trim()).filter(s=>/^\d{4}-\d{2}-\d{2}$/.test(s)); S.data.cfg.feriados=arr; save(); render(); }
 function setInicio(val){ if(/^\d{4}-\d{2}-\d{2}$/.test(val)){ S.data.cfg.inicio=val; save(); render(); } }
+function onUnidade(key,val){ if(!S.data.unidade)S.data.unidade={}; if(val===""||val==null){ delete S.data.unidade[key]; } else { S.data.unidade[key]=num(val); } save(); render(); }
+function setDiaVenc(val){ const n=Math.min(28,Math.max(1,Math.round(num(val))||8)); S.data.cfg.diaVenc=n; save(); render(); }
 function setPin(){ const np=prompt("Novo PIN do gestor (mín. 4 dígitos):"); if(np==null)return; if(np.length<4){ alert("PIN muito curto."); return; } if(S.data.cfg.gestorPin){ const old=prompt("Confirme o PIN atual:"); if(old!==S.data.cfg.gestorPin){ alert("PIN atual incorreto."); return; } } S.data.cfg.gestorPin=np; save(); alert("PIN atualizado."); }
 
 /* ====================== BOOT ====================== */
